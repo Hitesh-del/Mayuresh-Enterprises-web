@@ -1,0 +1,24 @@
+{
+  "name": "Mayuresh Enterprises - Premium Printing Services",
+  "short_name": "Mayuresh Enterprises",
+  "description": "Professional digital, offset, screen, and custom printing services in Khopoli, Raigad, Maharashtra.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

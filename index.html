@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f97316" />
+    <meta name="msapplication-TileColor" content="#f97316" />
+    <meta name="author" content="Mayuresh Enterprises" />
+    <meta name="geo.region" content="IN-MH" />
+    <meta name="geo.placename" content="Khopoli, Raigad, Maharashtra" />
+    <link rel="icon" type="image/png" href="/favicon.jpeg" />
+    <link rel="apple-touch-icon" href="/favicon.jpeg" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="canonical" href="https://www.mayureshenterprises.com/" />
+    <title>Mayuresh Enterprises</title>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.init({
+          appId: "87186c32-6096-4cb9-af25-efe8b11078e9",
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: true,
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

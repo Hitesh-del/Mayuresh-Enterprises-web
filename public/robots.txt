@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /profile
+Disallow: /wishlist
+Disallow: /notifications
+
+Sitemap: https://www.mayureshenterprises.com/sitemap.xml
