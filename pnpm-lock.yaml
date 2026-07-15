@@ -138,8 +138,8 @@ importers:
         specifier: ^0.576.0
         version: 0.576.0(react@18.3.1)
       miaoda-react-devkit:
-        specifier: 0.1.1-beta.14
-        version: 0.1.1-beta.14(@sentry/core@9.47.1)(@sentry/react@9.47.1(react@18.3.1))(miaoda-sc-plugin@1.0.62(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7)))(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7))
+        specifier: 0.1.1-beta.15
+        version: 0.1.1-beta.15(@sentry/core@9.47.1)(@sentry/react@9.47.1(react@18.3.1))(miaoda-sc-plugin@1.0.62(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7)))(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7))
       miaoda-sc-plugin:
         specifier: 1.0.62
         version: 1.0.62(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7))
@@ -2613,8 +2613,8 @@ packages:
   mermaid@11.15.0:
     resolution: {integrity: sha512-pTMbcf3rWdtLiYGpmoTjHEpeY8seiy6sR+9nD7LOs8KfUbHE4lOUAprTRqRAcWSQ6MQpdX+YEsxShtGsINtPtw==}
 
-  miaoda-react-devkit@0.1.1-beta.14:
-    resolution: {integrity: sha512-4PpZRBSIbYuATDMGbvdzwGzHqxzOx85PMhsZRdqf3BRBXf1pjPrv5b/xHfSQ1vRa0MV0TNB5y2IhVWKV0aXg7A==}
+  miaoda-react-devkit@0.1.1-beta.15:
+    resolution: {integrity: sha512-GkJDMiXB6wK35I9IxRDZP5l5F0OeMrBIzuabrHvtnKiZWcTbwZQW4gUCA7ftdlmxVr2xbejSHDUicc/ZOryBUw==}
     peerDependencies:
       '@sentry/core': '>=8.0.0'
       '@sentry/react': '>=8.0.0'
@@ -6079,7 +6079,7 @@ snapshots:
       ts-dedent: 2.3.0
       uuid: 14.0.0
 
-  miaoda-react-devkit@0.1.1-beta.14(@sentry/core@9.47.1)(@sentry/react@9.47.1(react@18.3.1))(miaoda-sc-plugin@1.0.62(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7)))(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7)):
+  miaoda-react-devkit@0.1.1-beta.15(@sentry/core@9.47.1)(@sentry/react@9.47.1(react@18.3.1))(miaoda-sc-plugin@1.0.62(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7)))(rolldown-vite@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@25.9.3)(jiti@1.21.7)):
     dependencies:
       '@babel/parser': 7.29.7
       '@babel/traverse': 7.29.7
