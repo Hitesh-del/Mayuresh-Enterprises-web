@@ -116,7 +116,7 @@ const DesktopHeader: React.FC = () => {
 
               <button
                 type="submit"
-                className="shrink-0 px-4 lg:px-6 bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1.5 hover:bg-primary/90 transition-colors"
+                className="shrink-0 px-4 lg:px-6 bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1.5 hover:bg-primary/90 transition-colors rounded-r-full"
               >
                 <Search className="w-4 h-4" />
                 <span className="hidden lg:inline">Search</span>

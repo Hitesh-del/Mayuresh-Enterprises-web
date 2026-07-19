@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -71,6 +71,15 @@ const ProfilePage: React.FC = () => {
   const { data: notifications = [] } = useNotifications(user?.id);
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const updateProfileMutation = useUpdateUserProfile();
+
+  useEffect(() => {
+    if (user) {
+      setView('profile');
+      setActiveMenu('profile');
+    } else if (view !== 'forgot' && view !== 'register' && view !== 'login') {
+      setView('login');
+    }
+  }, [user]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {

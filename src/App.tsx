@@ -20,76 +20,61 @@ const AuthListener: React.FC = () => {
   useBrowserNotifications(user?.id);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      dispatch(setUser(session?.user ?? null));
-      if (session?.user) {
-        supabase
-          .from('user_profiles')
-          .select('full_name, phone, avatar_url, role, notifications_enabled, address, business_hours')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(async ({ data, error }) => {
-            if (data) {
-              dispatch(setProfile(data));
-            } else {
-              // Auto-create profile if missing
-              const defaultProfile = {
-                id: session.user.id,
-                full_name: session.user.email?.split('@')[0] || null,
-                phone: null,
-                avatar_url: null,
-                role: 'user',
-                notifications_enabled: false,
-                address: null,
-                business_hours: null,
-              };
-              const { error: upsertError } = await supabase.from('user_profiles').upsert(defaultProfile, { onConflict: 'id' });
-              if (!upsertError) {
-                dispatch(setProfile(defaultProfile));
-              }
-            }
-            if (error) console.warn('Profile fetch error:', error);
-            dispatch(setAuthLoading(false));
-          });
-      } else {
-        dispatch(setAuthLoading(false));
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      dispatch(setUser(session?.user ?? null));
-      if (session?.user) {
-        supabase
-          .from('user_profiles')
-          .select('full_name, phone, avatar_url, role, notifications_enabled, address, business_hours')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(async ({ data, error }) => {
-            if (data) {
-              dispatch(setProfile(data));
-            } else {
-              const defaultProfile = {
-                id: session.user.id,
-                full_name: session.user.email?.split('@')[0] || null,
-                phone: null,
-                avatar_url: null,
-                role: 'user',
-                notifications_enabled: false,
-                address: null,
-                business_hours: null,
-              };
-              const { error: upsertError } = await supabase.from('user_profiles').upsert(defaultProfile, { onConflict: 'id' });
-              if (!upsertError) {
-                dispatch(setProfile(defaultProfile));
-              }
-            }
-            if (error) console.warn('Profile fetch error:', error);
-          });
-      } else {
+    const syncUserProfile = async (activeUser: { id: string; email?: string | null } | null) => {
+      if (!activeUser) {
         dispatch(setProfile(null));
+        dispatch(setAuthLoading(false));
+        return;
       }
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('full_name, phone, avatar_url, role, notifications_enabled, address, business_hours')
+        .eq('id', activeUser.id)
+        .maybeSingle();
+
+      if (data) {
+        dispatch(setProfile(data));
+      } else {
+        const defaultProfile = {
+          id: activeUser.id,
+          full_name: activeUser.email?.split('@')[0] || null,
+          phone: null,
+          avatar_url: null,
+          role: 'user',
+          notifications_enabled: false,
+          address: null,
+          business_hours: null,
+        };
+        const { error: upsertError } = await supabase.from('user_profiles').upsert(defaultProfile, { onConflict: 'id' });
+        if (!upsertError) {
+          dispatch(setProfile(defaultProfile));
+        }
+      }
+
+      if (error) console.warn('Profile fetch error:', error);
+      dispatch(setAuthLoading(false));
+    };
+
+    const syncAuthState = async () => {
+      const [{ data: { session } }, { data: { user: fetchedUser } }] = await Promise.all([
+        supabase.auth.getSession(),
+        supabase.auth.getUser(),
+      ]);
+
+      const activeUser = session?.user ?? fetchedUser ?? null;
+      dispatch(setUser(activeUser));
+      await syncUserProfile(activeUser);
+    };
+
+    void syncAuthState();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void supabase.auth.getUser().then(({ data: { user: fetchedUser } }) => {
+        const activeUser = session?.user ?? fetchedUser ?? null;
+        dispatch(setUser(activeUser));
+        void syncUserProfile(activeUser);
+      });
     });
 
     return () => subscription.unsubscribe();
