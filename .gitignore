@@ -13,6 +13,10 @@ dist-ssr
 output
 *.local
 .env
+.env.local
+.env.development
+.env.test
+.env.production
 .env.*
 !.env.example
 package-lock.json
