@@ -137,10 +137,9 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleGoogleLogin = async () => {
-    const redirectTo = `${window.location.origin}/profile`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: { redirectTo: window.location.origin },
     });
     if (error) toast.error(error.message);
   };

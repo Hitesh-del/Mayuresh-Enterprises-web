@@ -56,7 +56,7 @@ const DesktopHeader: React.FC = () => {
             onSubmit={handleSearch}
             className="flex-1 flex justify-center px-2 lg:px-6 xl:px-10"
           >
-            <div className="flex items-stretch w-full max-w-xl lg:max-w-2xl rounded-full overflow-hidden border border-border bg-muted/40 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all h-10 lg:h-11">
+            <div className="flex items-stretch w-full max-w-xl lg:max-w-2xl rounded-full overflow-visible border border-border bg-muted/40 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all h-10 lg:h-11">
               <div className="flex-1 min-w-0 flex items-center px-4">
                 <Search className="w-4 h-4 text-muted-foreground shrink-0 mr-2.5" />
                 <input
