@@ -177,13 +177,26 @@ const ProfilePage: React.FC = () => {
       console.warn('Google login session restore warning:', error);
     }
 
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (error) {
+      console.warn('Google sign-out cleanup warning:', error);
+    }
+
     setGoogleLoading(true);
     window.history.replaceState({}, document.title, window.location.pathname);
     const redirectTo = `${window.location.origin}/profile`;
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo },
+        options: {
+          redirectTo,
+          skipBrowserRedirect: false,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
       });
       if (error) {
         setGoogleLoading(false);
