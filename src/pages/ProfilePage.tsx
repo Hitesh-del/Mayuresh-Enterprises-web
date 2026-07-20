@@ -26,7 +26,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import Layout from '@/components/layout/Layout';
 import { useEnquiries, useNotifications, useUpdateUserProfile } from '@/hooks/useSupabaseData';
-import { supabase, restoreSupabaseAuthSession, ensureUserProfile } from '@/lib/supabase';
+import { supabase, restoreSupabaseAuthSession, ensureUserProfile, isGoogleProviderEnabled } from '@/lib/supabase';
 import { logout, setProfile, setUser } from '@/store/authSlice';
 import type { RootState } from '@/store';
 import { toast } from 'sonner';
@@ -47,12 +47,72 @@ const ProfilePage: React.FC = () => {
   const [view, setView] = useState<View>(user ? 'profile' : 'login');
   const [activeMenu, setActiveMenu] = useState<MenuKey>('profile');
 
-  // Keep auth view in sync when a session is restored after OAuth redirect
   useEffect(() => {
     if (user && (view === 'login' || view === 'register' || view === 'forgot')) {
       setView('profile');
     }
   }, [user, view]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const restoreAuthAndProfile = async () => {
+      try {
+        const { user: restoredUser } = await restoreSupabaseAuthSession();
+        if (!isActive) return;
+
+        if (!restoredUser) {
+          dispatch(setUser(null));
+          dispatch(setProfile(null));
+          return;
+        }
+
+        dispatch(setUser(restoredUser));
+        const profileData = await ensureUserProfile(restoredUser);
+        if (!isActive) return;
+        dispatch(setProfile(profileData));
+        setView('profile');
+        setActiveMenu('profile');
+      } catch (error) {
+        console.warn('Auth restore warning:', error);
+        if (isActive) {
+          dispatch(setUser(null));
+          dispatch(setProfile(null));
+        }
+      }
+    };
+
+    void restoreAuthAndProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    let isActive = true;
+
+    const hydrateProfile = async () => {
+      try {
+        const profileData = await ensureUserProfile(user);
+        if (isActive) {
+          dispatch(setProfile(profileData));
+        }
+      } catch (error) {
+        console.warn('Profile hydration warning:', error);
+      }
+    };
+
+    void hydrateProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [dispatch, user?.id]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -183,28 +243,47 @@ const ProfilePage: React.FC = () => {
       console.warn('Google sign-out cleanup warning:', error);
     }
 
+    const providerEnabled = await isGoogleProviderEnabled();
+    if (!providerEnabled) {
+      setGoogleLoading(false);
+      toast.error('Google login is not enabled for the current Supabase project. Please enable Google OAuth in Supabase Auth → Providers and confirm the deployed site uses the same project URL and anon key.');
+      return;
+    }
+
     setGoogleLoading(true);
     window.history.replaceState({}, document.title, window.location.pathname);
     const redirectTo = `${window.location.origin}/profile`;
+
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
-          skipBrowserRedirect: false,
           queryParams: {
+            prompt: 'select_account',
             access_type: 'offline',
-            prompt: 'consent',
+            include_granted_scopes: 'true',
           },
         },
       });
+
       if (error) {
-        setGoogleLoading(false);
-        toast.error(error.message);
+        throw error;
+      }
+
+      if (data?.url) {
+        window.location.assign(data.url);
+      } else {
+        throw new Error('Google login redirect URL was not returned');
       }
     } catch (error) {
       setGoogleLoading(false);
-      toast.error(error instanceof Error ? error.message : 'Google login failed');
+      const message = error instanceof Error ? error.message : 'Google login failed';
+      if (message.includes('Unsupported provider') || message.includes('not enabled')) {
+        toast.error('Google OAuth is not available for the current Supabase project. Enable Google in Supabase Auth → Providers and verify the deployed environment variables.');
+      } else {
+        toast.error(message);
+      }
     }
   };
 
@@ -309,12 +388,8 @@ const ProfilePage: React.FC = () => {
     ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '—';
 
-  const displayName =
-    profile?.full_name ||
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split('@')[0] ||
-    '—';
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || '—';
+  const userEmail = user?.email || profile?.full_name || '—';
 
   const accountRows = [
     { label: 'Full Name', key: 'full_name', value: displayName, editable: true },
@@ -411,8 +486,10 @@ const ProfilePage: React.FC = () => {
     );
   }
 
+  const shouldShowAuthView = !user && view !== 'profile' && view !== 'enquiries' && view !== 'settings';
+
   // Auth Views
-  if (!user && view !== 'profile' && view !== 'enquiries' && view !== 'settings') {
+  if (shouldShowAuthView) {
     const authProps = {
       view: view as 'login' | 'register' | 'forgot',
       setView,

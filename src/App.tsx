@@ -30,7 +30,12 @@ const fetchProfile = async (userId: string) => {
   return data;
 };
 
-const createDefaultProfile = async (currentUser: User) => {
+const hydrateProfileForUser = async (currentUser: User) => {
+  const existingProfile = await fetchProfile(currentUser.id);
+  if (existingProfile) {
+    return existingProfile;
+  }
+
   return ensureUserProfile(currentUser);
 };
 
@@ -56,16 +61,19 @@ const AuthListener: React.FC = () => {
       const resolvedUser = validatedUser ?? currentUser;
       dispatch(setUser(resolvedUser));
 
-      const profileData = await fetchProfile(resolvedUser.id);
+      if (!resolvedUser) {
+        dispatch(setProfile(null));
+        dispatch(setAuthLoading(false));
+        return;
+      }
+
+      const profileData = await hydrateProfileForUser(resolvedUser);
       if (!isMounted) return;
 
       if (profileData) {
         dispatch(setProfile(profileData));
       } else {
-        const createdProfile = await createDefaultProfile(resolvedUser);
-        if (createdProfile) {
-          dispatch(setProfile(createdProfile));
-        }
+        dispatch(setProfile(null));
       }
 
       dispatch(setAuthLoading(false));

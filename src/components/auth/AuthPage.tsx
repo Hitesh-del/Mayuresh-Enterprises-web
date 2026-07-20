@@ -16,6 +16,7 @@ interface AuthPageProps {
   showPassword: boolean;
   setShowPassword: (value: boolean) => void;
   authLoading: boolean;
+  googleLoading: boolean;
   onLogin: () => void;
   onRegister: () => void;
   onForgot: () => void;
@@ -49,7 +50,7 @@ const MobileAuth: React.FC<AuthPageProps> = (props) => {
   const navigate = useNavigate();
   const {
     view, setView, email, setEmail, password, setPassword,
-    showPassword, setShowPassword, authLoading,
+    showPassword, setShowPassword, authLoading, googleLoading,
     onLogin, onRegister, onForgot, onGoogle,
   } = props;
 
@@ -120,7 +121,7 @@ const MobileAuth: React.FC<AuthPageProps> = (props) => {
 
           <button
             onClick={view === 'login' ? onLogin : view === 'register' ? onRegister : onForgot}
-            disabled={authLoading}
+            disabled={authLoading || googleLoading}
             className="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
           >
             {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -136,7 +137,7 @@ const MobileAuth: React.FC<AuthPageProps> = (props) => {
               </div>
               <button
                 onClick={onGoogle}
-                disabled={authLoading}
+                disabled={authLoading || googleLoading}
                 className="w-full flex items-center justify-center gap-2 bg-card border border-border text-foreground font-semibold py-3 rounded-xl hover:bg-muted transition-colors disabled:opacity-60"
               >
                 <GoogleIcon className="w-5 h-5" />
@@ -172,7 +173,7 @@ const MobileAuth: React.FC<AuthPageProps> = (props) => {
 const DesktopAuth: React.FC<AuthPageProps> = (props) => {
   const {
     view, setView, email, setEmail, password, setPassword,
-    showPassword, setShowPassword, authLoading,
+    showPassword, setShowPassword, authLoading, googleLoading,
     onLogin, onRegister, onForgot, onGoogle,
   } = props;
 
@@ -264,7 +265,7 @@ const DesktopAuth: React.FC<AuthPageProps> = (props) => {
 
             <button
               onClick={view === 'login' ? onLogin : view === 'register' ? onRegister : onForgot}
-              disabled={authLoading}
+              disabled={authLoading || googleLoading}
               className="w-full flex items-center justify-center gap-2 bg-[#FF6B00] text-white font-semibold py-3.5 rounded-full hover:bg-[#E05A00] hover:-translate-y-0.5 transition-all disabled:opacity-60 shadow-lg shadow-[#FF6B00]/25"
             >
               {authLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
@@ -285,7 +286,7 @@ const DesktopAuth: React.FC<AuthPageProps> = (props) => {
                 </div>
                 <button
                   onClick={onGoogle}
-                  disabled={authLoading}
+                  disabled={authLoading || googleLoading}
                   className="w-full flex items-center justify-center gap-2 bg-white border border-[#E5E7EB] text-[#111827] font-medium py-3.5 rounded-xl hover:bg-[#F9FAFB] transition-colors disabled:opacity-60"
                 >
                   <GoogleIcon className="w-5 h-5" />

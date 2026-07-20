@@ -3,6 +3,13 @@ import { createClient, type Session, type User } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+export const getSupabaseOAuthUrl = (redirectTo: string, provider: 'google' | 'github' | 'gitlab' | 'azure' | 'facebook' | 'twitter' | 'discord' | 'slack' | 'spotify' | 'linkedin' | 'notion' | 'twitch' | 'bitbucket' | 'keycloak' | 'workos' | 'zoom' | 'apple' | 'gitlab' | 'kakao' | 'snapchat' = 'google') => {
+  const url = new URL(`${supabaseUrl}/auth/v1/authorize`);
+  url.searchParams.set('provider', provider);
+  url.searchParams.set('redirect_to', redirectTo);
+  return url.toString();
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -12,6 +19,31 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: window.localStorage,
   },
 });
+
+export async function getSupabaseAuthSettings() {
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
+  } catch (error) {
+    console.warn('Supabase auth settings lookup failed:', error);
+    return null;
+  }
+}
+
+export async function isGoogleProviderEnabled(): Promise<boolean> {
+  const settings = await getSupabaseAuthSettings();
+  return Boolean(settings?.external?.google);
+}
 
 export async function restoreSupabaseAuthSession(): Promise<{ user: User | null; session: Session | null }> {
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
