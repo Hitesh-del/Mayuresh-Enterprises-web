@@ -7,12 +7,32 @@ import IntersectObserver from '@/components/common/IntersectObserver';
 import { Toaster } from '@/components/ui/sonner';
 import { store } from '@/store';
 import { queryClient } from '@/lib/queryClient';
-import { supabase } from '@/lib/supabase';
+import { supabase, restoreSupabaseAuthSession, ensureUserProfile } from '@/lib/supabase';
 import { setUser, setProfile, setAuthLoading } from '@/store/authSlice';
 import { useBrowserNotifications } from '@/hooks/useBrowserNotifications';
 import type { RootState } from '@/store';
 
 import { routes } from './routes';
+
+import type { User } from '@supabase/supabase-js';
+
+const fetchProfile = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('full_name, phone, avatar_url, role, notifications_enabled, address, business_hours')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('Profile fetch error:', error);
+    return null;
+  }
+  return data;
+};
+
+const createDefaultProfile = async (currentUser: User) => {
+  return ensureUserProfile(currentUser);
+};
 
 const AuthListener: React.FC = () => {
   const dispatch = useDispatch();
@@ -20,64 +40,65 @@ const AuthListener: React.FC = () => {
   useBrowserNotifications(user?.id);
 
   useEffect(() => {
-    const syncUserProfile = async (activeUser: { id: string; email?: string | null } | null) => {
-      if (!activeUser) {
+    let isMounted = true;
+
+    const applyAuthState = async (currentUser: User | null) => {
+      if (!isMounted) return;
+
+      if (!currentUser) {
+        dispatch(setUser(null));
         dispatch(setProfile(null));
         dispatch(setAuthLoading(false));
         return;
       }
 
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('full_name, phone, avatar_url, role, notifications_enabled, address, business_hours')
-        .eq('id', activeUser.id)
-        .maybeSingle();
+      const { user: validatedUser } = await restoreSupabaseAuthSession();
+      const resolvedUser = validatedUser ?? currentUser;
+      dispatch(setUser(resolvedUser));
 
-      if (data) {
-        dispatch(setProfile(data));
+      const profileData = await fetchProfile(resolvedUser.id);
+      if (!isMounted) return;
+
+      if (profileData) {
+        dispatch(setProfile(profileData));
       } else {
-        const defaultProfile = {
-          id: activeUser.id,
-          full_name: activeUser.email?.split('@')[0] || null,
-          phone: null,
-          avatar_url: null,
-          role: 'user',
-          notifications_enabled: false,
-          address: null,
-          business_hours: null,
-        };
-        const { error: upsertError } = await supabase.from('user_profiles').upsert(defaultProfile, { onConflict: 'id' });
-        if (!upsertError) {
-          dispatch(setProfile(defaultProfile));
+        const createdProfile = await createDefaultProfile(resolvedUser);
+        if (createdProfile) {
+          dispatch(setProfile(createdProfile));
         }
       }
 
-      if (error) console.warn('Profile fetch error:', error);
       dispatch(setAuthLoading(false));
     };
 
-    const syncAuthState = async () => {
-      const [{ data: { session } }, { data: { user: fetchedUser } }] = await Promise.all([
-        supabase.auth.getSession(),
-        supabase.auth.getUser(),
-      ]);
-
-      const activeUser = session?.user ?? fetchedUser ?? null;
-      dispatch(setUser(activeUser));
-      await syncUserProfile(activeUser);
-    };
-
-    void syncAuthState();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      void supabase.auth.getUser().then(({ data: { user: fetchedUser } }) => {
-        const activeUser = session?.user ?? fetchedUser ?? null;
-        dispatch(setUser(activeUser));
-        void syncUserProfile(activeUser);
-      });
+      const currentUser = session?.user ?? null;
+      if (!isMounted) return;
+      void applyAuthState(currentUser);
     });
 
-    return () => subscription.unsubscribe();
+    const loadSessionAndProfile = async () => {
+      try {
+        const { user: currentUser } = await restoreSupabaseAuthSession();
+        if (!isMounted) return;
+        await applyAuthState(currentUser);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (isMounted) {
+          dispatch(setUser(null));
+          dispatch(setProfile(null));
+          dispatch(setAuthLoading(false));
+        }
+      }
+    };
+
+    dispatch(setAuthLoading(true));
+    void loadSessionAndProfile();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [dispatch]);
 
   return null;

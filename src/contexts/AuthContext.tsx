@@ -1,23 +1,35 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
-// @ts-ignore
-import type { Profile } from '@/types/types';
-import { toast } from 'sonner';
+import type { RootState } from '@/store';
+import { logout, setProfile, setUser } from '@/store/authSlice';
+
+interface Profile {
+  id?: string;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  role: string;
+  notifications_enabled: boolean;
+  address: string | null;
+  business_hours: string | null;
+}
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
+    .from('user_profiles')
+    .select('id, full_name, phone, avatar_url, role, notifications_enabled, address, business_hours')
     .eq('id', userId)
     .maybeSingle();
 
   if (error) {
-    console.error('获取用户信息失败:', error);
+    console.error('Failed to fetch user profile:', error);
     return null;
   }
   return data;
 }
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -31,61 +43,23 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  const { user, profile, isLoading } = useSelector((state: RootState) => state.auth);
+  const loading = isLoading;
 
   const refreshProfile = async () => {
     if (!user) {
-      setProfile(null);
+      dispatch(setProfile(null));
       return;
     }
-
     const profileData = await getProfile(user.id);
-    setProfile(profileData);
+    dispatch(setProfile(profileData));
   };
-
-  useEffect(() => {
-    supabase
-      .auth
-      .getSession()
-      // @ts-ignore
-      .then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          getProfile(session.user.id).then(setProfile);
-        }
-      })
-      // @ts-ignore
-      .catch(error => {
-        toast.error(`获取用户信息失败: ${error.message}`);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    // @ts-ignore
-    // In this function, do NOT use any await calls. Use `.then()` instead to avoid deadlocks.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        getProfile(session.user.id).then(setProfile);
-      } else {
-        setProfile(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const signInWithUsername = async (username: string, password: string) => {
     try {
       const email = `${username}@miaoda.com`;
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return { error: null };
     } catch (error) {
@@ -96,11 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpWithUsername = async (username: string, password: string) => {
     try {
       const email = `${username}@miaoda.com`;
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       return { error: null };
     } catch (error) {
@@ -110,8 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
+    dispatch(logout());
   };
 
   return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -26,8 +26,8 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import Layout from '@/components/layout/Layout';
 import { useEnquiries, useNotifications, useUpdateUserProfile } from '@/hooks/useSupabaseData';
-import { supabase } from '@/lib/supabase';
-import { logout, setProfile } from '@/store/authSlice';
+import { supabase, restoreSupabaseAuthSession, ensureUserProfile } from '@/lib/supabase';
+import { logout, setProfile, setUser } from '@/store/authSlice';
 import type { RootState } from '@/store';
 import { toast } from 'sonner';
 import { uploadAvatar } from '@/lib/imageUpload';
@@ -46,6 +46,27 @@ const ProfilePage: React.FC = () => {
   const { user, profile, isLoading } = useSelector((state: RootState) => state.auth);
   const [view, setView] = useState<View>(user ? 'profile' : 'login');
   const [activeMenu, setActiveMenu] = useState<MenuKey>('profile');
+
+  // Keep auth view in sync when a session is restored after OAuth redirect
+  useEffect(() => {
+    if (user && (view === 'login' || view === 'register' || view === 'forgot')) {
+      setView('profile');
+    }
+  }, [user, view]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+    if (error) {
+      toast.error(errorDescription ? decodeURIComponent(errorDescription) : `OAuth error: ${error}`);
+    }
+
+    const hasAuthParams = params.has('code') || params.has('error') || params.has('state');
+    if (hasAuthParams) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   // Auth form state
   const [email, setEmail] = useState('');
@@ -71,15 +92,6 @@ const ProfilePage: React.FC = () => {
   const { data: notifications = [] } = useNotifications(user?.id);
   const unreadCount = notifications.filter((n) => !n.is_read).length;
   const updateProfileMutation = useUpdateUserProfile();
-
-  useEffect(() => {
-    if (user) {
-      setView('profile');
-      setActiveMenu('profile');
-    } else if (view !== 'forgot' && view !== 'register' && view !== 'login') {
-      setView('login');
-    }
-  }, [user]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -145,12 +157,42 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const [googleLoading, setGoogleLoading] = useState(false);
+
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) toast.error(error.message);
+    if (googleLoading) return;
+
+    try {
+      const { user: restoredUser } = await restoreSupabaseAuthSession();
+      if (restoredUser) {
+        dispatch(setUser(restoredUser));
+        const profileData = await ensureUserProfile(restoredUser);
+        if (profileData) {
+          dispatch(setProfile(profileData));
+        }
+        setView('profile');
+        return;
+      }
+    } catch (error) {
+      console.warn('Google login session restore warning:', error);
+    }
+
+    setGoogleLoading(true);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    const redirectTo = `${window.location.origin}/profile`;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      if (error) {
+        setGoogleLoading(false);
+        toast.error(error.message);
+      }
+    } catch (error) {
+      setGoogleLoading(false);
+      toast.error(error instanceof Error ? error.message : 'Google login failed');
+    }
   };
 
   const handleForgot = async () => {
@@ -170,11 +212,17 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    dispatch(logout());
-    setView('login');
-    setActiveMenu('profile');
-    toast.success('Logged out');
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      dispatch(logout());
+      dispatch(setUser(null));
+      dispatch(setProfile(null));
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setView('login');
+      setActiveMenu('profile');
+      toast.success('Logged out');
+    }
   };
 
   const handleSaveField = async () => {
@@ -248,8 +296,15 @@ const ProfilePage: React.FC = () => {
     ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '—';
 
+  const displayName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split('@')[0] ||
+    '—';
+
   const accountRows = [
-    { label: 'Full Name', key: 'full_name', value: profile?.full_name || user?.email?.split('@')[0] || '—', editable: true },
+    { label: 'Full Name', key: 'full_name', value: displayName, editable: true },
     { label: 'Email Address', key: 'email', value: user?.email || '—', editable: false },
     { label: 'Phone Number', key: 'phone', value: profile?.phone || '—', editable: true },
   ];
@@ -330,6 +385,19 @@ const ProfilePage: React.FC = () => {
     </aside>
   );
 
+  if (isLoading && !user) {
+    return (
+      <Layout>
+        <div className="flex min-h-[50vh] items-center justify-center px-4 py-16">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+            <p className="mt-3 text-sm text-muted-foreground">Restoring your account…</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   // Auth Views
   if (!user && view !== 'profile' && view !== 'enquiries' && view !== 'settings') {
     const authProps = {
@@ -342,6 +410,7 @@ const ProfilePage: React.FC = () => {
       showPassword,
       setShowPassword,
       authLoading,
+      googleLoading,
       onLogin: handleLogin,
       onRegister: handleRegister,
       onForgot: handleForgot,
@@ -507,10 +576,10 @@ const ProfilePage: React.FC = () => {
                   <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6 text-center md:text-left">
                     <div className="relative shrink-0">
                       <div className="relative w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full bg-muted border-2 border-primary/20 overflow-hidden flex items-center justify-center">
-                        {profile?.avatar_url ? (
+                        {profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (
                           <img
-                            src={profile.avatar_url}
-                            alt={profile?.full_name || user?.email || 'User'}
+                            src={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
+                            alt={displayName}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -541,7 +610,7 @@ const ProfilePage: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-foreground truncate">
-                        {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+                        {displayName === '—' ? 'User' : displayName}
                       </h2>
                       <p className="text-sm text-muted-foreground truncate">{user?.email || ''}</p>
                       <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-3">
