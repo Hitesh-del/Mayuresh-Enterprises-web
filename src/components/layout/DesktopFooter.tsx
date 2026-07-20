@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, MapPin, Facebook, Twitter, Instagram } from 'lucide-react';
+import { Mail, Phone, MapPin, Instagram } from 'lucide-react';
 
 const logoUrl = 'https://miaoda-conversation-file.s3cdn.medo.dev/user-cc0cvmcrcxkw/app-cdkoojeqtu69/20260706/mayuresh.jpeg';
 
@@ -32,13 +32,7 @@ const DesktopFooter: React.FC = () => {
               Premium printing services for businesses. Custom designs, bulk orders, and fast delivery.
             </p>
             <div className="flex items-center gap-3 mt-4">
-              <button className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <Facebook className="w-4 h-4 text-foreground" />
-              </button>
-              <button className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <Twitter className="w-4 h-4 text-foreground" />
-              </button>
-              <button className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
+              <button className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors" aria-label="Instagram">
                 <Instagram className="w-4 h-4 text-foreground" />
               </button>
             </div>

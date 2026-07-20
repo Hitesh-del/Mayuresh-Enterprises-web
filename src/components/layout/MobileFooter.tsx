@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, MapPin, Twitter, Facebook, Instagram } from 'lucide-react';
+import { Mail, Phone, MapPin, Instagram } from 'lucide-react';
 
 const logoUrl = 'https://miaoda-conversation-file.s3cdn.medo.dev/user-cc0cvmcrcxkw/app-cdkoojeqtu69/20260706/mayuresh.jpeg';
 
@@ -72,13 +72,7 @@ const MobileFooter: React.FC = () => {
 
         {/* Social */}
         <div className="flex items-center gap-3">
-          <span className="p-1.5 rounded-lg bg-muted">
-            <Facebook className="w-3.5 h-3.5 text-foreground" />
-          </span>
-          <span className="p-1.5 rounded-lg bg-muted">
-            <Twitter className="w-3.5 h-3.5 text-foreground" />
-          </span>
-          <span className="p-1.5 rounded-lg bg-muted">
+          <span className="p-1.5 rounded-lg bg-muted" aria-label="Instagram">
             <Instagram className="w-3.5 h-3.5 text-foreground" />
           </span>
         </div>

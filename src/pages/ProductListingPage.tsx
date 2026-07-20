@@ -111,8 +111,8 @@ const ProductListingPage: React.FC = () => {
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12 md:py-20">
-            <p className="text-muted-foreground text-sm md:text-base">No products found</p>
-            <p className="text-muted-foreground text-xs md:text-sm mt-1">Try a different search term</p>
+            <p className="text-muted-foreground text-sm md:text-base">No Products Found</p>
+            <p className="text-muted-foreground text-xs md:text-sm mt-1">Try a different search term or category</p>
           </div>
         ) : (
           <div className={`grid ${gridCols} gap-3 md:gap-4 lg:gap-6 items-stretch`}>

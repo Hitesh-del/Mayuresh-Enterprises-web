@@ -55,6 +55,41 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
+  const handleShare = async () => {
+    if (!product) return;
+
+    const shareUrl = `${window.location.origin}/product/${product.id}`;
+    const shareData = {
+      title: product.name,
+      text: product.description || `Check out ${product.name} from Mayuresh Enterprises.`,
+      url: shareUrl,
+    };
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link Copied Successfully');
+        return;
+      }
+
+      window.prompt('Copy this link:', shareUrl);
+    } catch {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Link Copied Successfully');
+        } catch {
+          toast.error('Unable to share this product right now.');
+        }
+      }
+    }
+  };
+
   const { data: product, isLoading } = useProduct(id || '');
   const { data: similar = [] } = useSimilarProducts(
     product?.category_id || '',
@@ -155,7 +190,11 @@ const ProductDetailPage: React.FC = () => {
             >
               <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-foreground'}`} />
             </button>
-            <button className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors" aria-label="Share">
+            <button
+              onClick={handleShare}
+              className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors"
+              aria-label="Share"
+            >
               <Share2 className="w-5 h-5 text-foreground" />
             </button>
           </div>

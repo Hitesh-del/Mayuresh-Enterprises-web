@@ -12,6 +12,8 @@ dist
 dist-ssr
 output
 *.local
+
+# Environment variables
 .env
 .env.local
 .env.development
@@ -19,6 +21,8 @@ output
 .env.production
 .env.*
 !.env.example
+!.env.sample
+
 package-lock.json
 playwright-report
 test-results

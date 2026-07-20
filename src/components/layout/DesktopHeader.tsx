@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, User, ChevronDown, FileText, Phone, Search } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
-import { useCategories, useNotifications } from '@/hooks/useSupabaseData';
+import { useCategories, useNotifications, useProducts } from '@/hooks/useSupabaseData';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const logoUrl = 'https://miaoda-conversation-file.s3cdn.medo.dev/user-cc0cvmcrcxkw/app-cdkoojeqtu69/20260706/mayuresh.jpeg';
 
@@ -17,15 +18,59 @@ const DesktopHeader: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const debouncedSearch = useDebounce(searchQuery.trim(), 200);
+
+  const { data: suggestionProducts = [] } = useProducts({
+    categorySlug: selectedCategory || undefined,
+    search: debouncedSearch || undefined,
+    limit: 10,
+  });
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
+        setSuggestionsOpen(false);
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     const params = new URLSearchParams();
-    if (searchQuery.trim()) params.set('search', searchQuery.trim());
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery) params.set('search', trimmedQuery);
     if (selectedCategory) params.set('category', selectedCategory);
     const query = params.toString();
+    setSuggestionsOpen(false);
     navigate(`/products${query ? `?${query}` : ''}`);
+  };
+
+  const handleCategorySelect = (slug: string) => {
+    const nextCategory = slug;
+    setSelectedCategory(nextCategory);
+    setDropdownOpen(false);
+    const params = new URLSearchParams();
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery) params.set('search', trimmedQuery);
+    if (nextCategory) params.set('category', nextCategory);
+    const query = params.toString();
+    navigate(`/products${query ? `?${query}` : ''}`);
+  };
+
+  const handleSuggestionSelect = (productId: string) => {
+    setSuggestionsOpen(false);
+    setSearchQuery('');
+    navigate(`/product/${productId}`);
   };
 
   const selectedCategoryName = selectedCategory
@@ -56,14 +101,21 @@ const DesktopHeader: React.FC = () => {
             onSubmit={handleSearch}
             className="flex-1 flex justify-center px-2 lg:px-6 xl:px-10"
           >
-            <div className="flex items-stretch w-full max-w-xl lg:max-w-2xl rounded-full overflow-visible border border-border bg-muted/40 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all h-10 lg:h-11">
+            <div
+              ref={searchContainerRef}
+              className="relative flex items-stretch w-full max-w-xl lg:max-w-2xl rounded-full overflow-visible border border-border bg-muted/40 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all h-10 lg:h-11"
+            >
               <div className="flex-1 min-w-0 flex items-center px-4">
                 <Search className="w-4 h-4 text-muted-foreground shrink-0 mr-2.5" />
                 <input
                   type="text"
                   placeholder="Search for products, categories..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSuggestionsOpen(Boolean(searchQuery.trim()))}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSuggestionsOpen(Boolean(e.target.value.trim()));
+                  }}
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
                 />
               </div>
@@ -85,10 +137,7 @@ const DesktopHeader: React.FC = () => {
                   >
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedCategory('');
-                        setDropdownOpen(false);
-                      }}
+                      onClick={() => handleCategorySelect('')}
                       className={`w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors ${
                         selectedCategory === '' ? 'text-primary font-medium' : 'text-foreground'
                       }`}
@@ -99,10 +148,7 @@ const DesktopHeader: React.FC = () => {
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => {
-                          setSelectedCategory(cat.slug);
-                          setDropdownOpen(false);
-                        }}
+                        onClick={() => handleCategorySelect(cat.slug)}
                         className={`w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors ${
                           selectedCategory === cat.slug ? 'text-primary font-medium' : 'text-foreground'
                         }`}
@@ -121,6 +167,26 @@ const DesktopHeader: React.FC = () => {
                 <Search className="w-4 h-4" />
                 <span className="hidden lg:inline">Search</span>
               </button>
+
+              {suggestionsOpen && debouncedSearch && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg z-[60] max-h-72 overflow-y-auto">
+                  {suggestionProducts.length > 0 ? (
+                    suggestionProducts.slice(0, 8).map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => handleSuggestionSelect(product.id)}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors border-b border-border/60 last:border-b-0"
+                      >
+                        {product.name}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-sm text-muted-foreground">No Products Found</div>
+                  )}
+                </div>
+              )}
             </div>
           </form>
 
@@ -135,12 +201,12 @@ const DesktopHeader: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/notifications')}
-              className="relative p-2 lg:p-2.5 hover:bg-muted rounded-xl transition-colors"
+              className="relative overflow-visible p-2 lg:p-2.5 hover:bg-muted rounded-xl transition-colors"
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5 text-foreground" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4.5 h-4.5 flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground rounded-full">
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground rounded-full border border-background">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
